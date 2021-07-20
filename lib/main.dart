@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+// import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 void main() {
@@ -75,14 +75,14 @@ class _MyHomePageState extends State<MyHomePage> {
             .showSnackBar(SnackBar(content: Text('Signed in by google'))));
   }
 
-  void loginWithFacebook() async {
-    final AccessToken result = await FacebookAuth.instance.login();
-    final facebookAuthCredential =
-        FacebookAuthProvider.getCredential(accessToken: result.token);
-    _auth.signInWithCredential(facebookAuthCredential).then((value) =>
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Signed in by facebook'))));
-  }
+  // void loginWithFacebook() async {
+  //   final AccessToken result = await FacebookAuth.instance.login();
+  //   final facebookAuthCredential =
+  //       FacebookAuthProvider.getCredential(accessToken: result.token);
+  //   _auth.signInWithCredential(facebookAuthCredential).then((value) =>
+  //       ScaffoldMessenger.of(context)
+  //           .showSnackBar(SnackBar(content: Text('Signed in by facebook'))));
+  // }
 
   @override
   void initState() {
@@ -169,13 +169,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   style: TextStyle(fontSize: 15.0),
                 ),
               ),
-              TextButton(
-                onPressed: loginWithFacebook,
-                child: Text(
-                  'FACEBOOK',
-                  style: TextStyle(fontSize: 15.0),
-                ),
-              ),
+              // TextButton(
+              //   onPressed: loginWithFacebook,
+              //   child: Text(
+              //     'FACEBOOK',
+              //     style: TextStyle(fontSize: 15.0),
+              //   ),
+              // ),
             ],
           ),
         ),
