@@ -1,24 +1,25 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_signup/login.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-void main() {
-  runApp(MyApp());
-}
+void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'Flutter Demo',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        initialRoute: '/',
+        routes: {
+          '/login': (context) => Login(),
+        },
+        home: MyHomePage(title: 'Flutter Demo Home Page'),
+      );
 }
 
 class MyHomePage extends StatefulWidget {
@@ -34,29 +35,77 @@ class _MyHomePageState extends State<MyHomePage> {
   final _globalKey = GlobalKey<FormState>();
   final _userName = TextEditingController();
   final _password = TextEditingController();
-  var _visible = false;
-  var signedIn = false;
-  late String _email, _pwd;
-  FirebaseAuth _auth = FirebaseAuth.instance;
+  late String _email;
 
-  void login({required String email, required String pwd}) async {
-    try {
-      _auth
-          .signInWithEmailAndPassword(email: _email, password: _pwd)
-          .then((value) => {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Login Successfull')))
-              });
-    } catch (e) {
-      print(e.toString());
-    }
-  }
+  @override
+  void initState() => super.initState();
 
-  void register({required String email, required String pwd}) async {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  void login({required String mobile, required BuildContext context}) async {
+    mobile = '+91' + mobile;
     try {
-      _auth.createUserWithEmailAndPassword(email: email, password: pwd).then(
-          (value) => ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('User Registered!!'))));
+      await _auth.verifyPhoneNumber(
+          phoneNumber: mobile,
+          timeout: Duration(seconds: 30),
+          verificationCompleted: (phoneAuthCredential) async {
+            await _auth.signInWithCredential(phoneAuthCredential).then((value) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('LoggedIn with phone Auth !!!')));
+              Navigator.of(context).pushNamed('/login');
+            }).catchError((onError) {
+              print(onError);
+            });
+          },
+          verificationFailed: (e) {
+            print(e.message);
+          },
+          codeSent: (verificationId, [int? resend_id]) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('Enter OTP'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller: _password,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    child: Text(
+                      "Done",
+                      style: TextStyle(
+                          color: Colors.white,
+                          backgroundColor: Colors.redAccent),
+                    ),
+                    onPressed: () {
+                      FirebaseAuth auth = FirebaseAuth.instance;
+
+                      var smsCode = _password.text.trim();
+
+                      var _credential = PhoneAuthProvider.getCredential(
+                          verificationId: verificationId, smsCode: smsCode);
+                      auth
+                          .signInWithCredential(_credential)
+                          .then((AuthResult result) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Logged In via OTP')));
+                        Navigator.of(context).pushNamed('/login');
+                      }).catchError((e) {
+                        print(e);
+                      });
+                    },
+                  )
+                ],
+              ),
+            );
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            print(verificationId);
+          });
     } catch (e) {
       print(e.toString());
     }
@@ -70,116 +119,93 @@ class _MyHomePageState extends State<MyHomePage> {
     final credential = GoogleAuthProvider.getCredential(
         idToken: googleSignInAuthentication.idToken,
         accessToken: googleSignInAuthentication.accessToken);
-    _auth.signInWithCredential(credential).then((value) =>
+    _auth.signInWithCredential(credential).then((value) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Signed in by google')));
+      Navigator.of(context).pushNamed('/login');
+    });
+  }
+
+  void loginWithFacebook() async {
+    var login = FacebookLogin();
+    var loginResult = await login.logInWithReadPermissions(['email']);
+    switch (loginResult.status) {
+      case FacebookLoginStatus.error:
+        print("Error");
+        break;
+      case FacebookLoginStatus.cancelledByUser:
+        print("CancelledByUser");
+        break;
+      case FacebookLoginStatus.loggedIn:
+        print("LoggedIn");
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Signed in by google'))));
-  }
-
-  // void loginWithFacebook() async {
-  //   final AccessToken result = await FacebookAuth.instance.login();
-  //   final facebookAuthCredential =
-  //       FacebookAuthProvider.getCredential(accessToken: result.token);
-  //   _auth.signInWithCredential(facebookAuthCredential).then((value) =>
-  //       ScaffoldMessenger.of(context)
-  //           .showSnackBar(SnackBar(content: Text('Signed in by facebook'))));
-  // }
-
-  @override
-  void initState() {
-    // _auth.onAuthStateChanged.isEmpty.then((value) =>
-    // // TODO: complete the function
-    // );
-    super.initState();
+            .showSnackBar(SnackBar(content: Text('Login by Facebook done!!')));
+        Navigator.of(context).pushNamed('/login');
+        break;
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Form(
-          key: _globalKey,
-          child: Column(
-            children: [
-              TextFormField(
+      body: Form(
+        key: _globalKey,
+        child: Stack(
+          children: [
+            Align(
+              child: TextFormField(
                 controller: _userName,
                 decoration: InputDecoration(
-                    hintText: 'Email id', contentPadding: EdgeInsets.all(5)),
-                validator: (value) {
-                  if (value == null || value.isEmpty || !value.contains('@')) {
-                    return 'Email id is required !!';
-                  }
-                },
-              ),
-              TextFormField(
-                controller: _password,
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  contentPadding: EdgeInsets.all(5),
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _visible = !_visible;
-                      });
-                    },
-                    icon: Icon(Icons.remove_red_eye),
-                  ),
-                ),
+                    labelText: 'Mobile No.', contentPadding: EdgeInsets.all(5)),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Password is required !!';
+                    return 'Mobile number is required !!';
                   }
                 },
-                obscureText: _visible,
               ),
-              TextButton(
+              alignment: Alignment.topCenter,
+            ),
+            Align(
+              child: TextButton(
                 onPressed: () {
                   _globalKey.currentState!.validate();
                   setState(() {
-                    _email = _userName.text;
-                    _pwd = _password.text;
+                    _email = _userName.text.trim();
                   });
-                  login(email: _email, pwd: _pwd);
+                  login(mobile: _email, context: context);
                 },
                 child: Text(
                   'LOGIN',
                   style: TextStyle(fontSize: 15.0),
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  _globalKey.currentState!.validate();
-                  setState(() {
-                    _email = _userName.text;
-                    _pwd = _password.text;
-                    register(email: _email, pwd: _pwd);
-                  });
-                },
-                child: Text(
-                  'SIGNUP',
-                  style: TextStyle(fontSize: 15.0),
-                ),
+              alignment: Alignment.center,
+            ),
+            Align(
+              child: Column(
+                children: [
+                  TextButton(
+                    onPressed: loginWithGoogle,
+                    child: Text(
+                      'GOOGLE  ',
+                      style: TextStyle(fontSize: 15.0),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: loginWithFacebook,
+                    child: Text(
+                      'FACEBOOK',
+                      style: TextStyle(fontSize: 15.0),
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: loginWithGoogle,
-                child: Text(
-                  'GOOGLE  ',
-                  style: TextStyle(fontSize: 15.0),
-                ),
-              ),
-              // TextButton(
-              //   onPressed: loginWithFacebook,
-              //   child: Text(
-              //     'FACEBOOK',
-              //     style: TextStyle(fontSize: 15.0),
-              //   ),
-              // ),
-            ],
-          ),
+              alignment: Alignment.bottomCenter,
+            ),
+          ],
         ),
       ),
     );
-  }
 }
